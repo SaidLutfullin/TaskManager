@@ -45,7 +45,7 @@ async def create_new_task_list(message: types.Message):
     await update_task_message(message.chat.id, current_date, create_new_message=True) 
    
 
-#this method is processes user's message which is new task for today
+#this command is processes user's message which is new task for today
 @dp.message_handler(content_types=types.ContentTypes.TEXT)
 async def new_task(message: types.Message):
     #we don't need user's message, its text will become a task

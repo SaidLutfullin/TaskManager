@@ -4,6 +4,7 @@ from bson.objectid import ObjectId
 client = pymongo.MongoClient('localhost', 27017)
 db = client['TimeTable']
 
+
 def add_task (user_id, date, task, completed=False):
     #"u" is prefix for chat_id
     collection = db[f"u{str(user_id)}"]
