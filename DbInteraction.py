@@ -1,59 +1,42 @@
-import pymongo
-from bson.objectid import ObjectId
+from sqlalchemy import create_engine
+from models import Task, TaskTable
+from sqlalchemy.orm import Session
 
-client = pymongo.MongoClient('localhost', 27017)
-db = client['TimeTable']
+engine = create_engine("sqlite:///base.sqlite3", echo=False)
+session = Session(bind=engine)
 
+def add_task (chat_id, date, task):
+    task = Task(chat_id = chat_id, date=date, task=task)
+    session.add(task)
+    session.commit()
 
-def add_task (user_id, date, task, completed=False):
-    #"u" is prefix for chat_id
-    collection = db[f"u{str(user_id)}"]
-    collection.insert_one({"task":task, "date":date, "completed":completed})
-    
+def get_day(chat_id, date):
+    day = session.query(Task).filter(Task.chat_id==chat_id, Task.date==date).all()
+    return(day)
 
-def get_day(user_id, date):
-    collection = db[f"u{str(user_id)}"]
-    day = list(collection.find({"date":date}))
-    if (day == []):
-        return None
-    else:
-        return day
+def change_completed(chat_id, task_id):
+    task = session.query(Task).filter(Task.chat_id==chat_id, Task.id==task_id).first()
+    task.completed = not task.completed
+    session.add(task)
+    session.commit()
 
-def change_completed(user_id, task_id):
-    collection = db[f"u{str(user_id)}"]
-    completed = collection.find_one({"_id":ObjectId(task_id)}, {"completed":True, "_id":False})["completed"]
-    collection.update_one({"_id":ObjectId(task_id)}, {"$set":{"completed":not completed}})
+def delete_task(chat_id, task_id):
+    task = session.query(Task).filter(Task.chat_id==chat_id, Task.id==task_id).first()
+    session.delete(task)
+    session.commit()
 
+def set_message_id(chat_id, message_id):
+    task_table = session.query(TaskTable).get(chat_id)
+    if task_table is None:
+        task_table = TaskTable(chat_id = chat_id)
+    task_table.message_id = message_id
+    session.add(task_table)
+    session.commit()
 
-def delete_task(user_id, task_id):
-    collection = db[f"u{str(user_id)}"]
-    collection.delete_one({"_id":ObjectId(task_id)})
+def get_message_id(chat_id):
+    task_table = session.query(TaskTable).get(chat_id)
+    return task_table.message_id
 
-
-def create_users_document(user_id):
-    collection = db["users"]
-    collection.insert_one({"_id":user_id})
-
-
-def set_current_date(user_id, date):
-    collection = db["users"]
-    collection.update_one({"_id":user_id}, {"$set":{"date":date}})
-
-
-def get_current_date(user_id):
-    collection = db["users"]
-    date = collection.find_one({"_id":user_id}, {"_id":False})
-    #date is dict like {"date":"1.2.2022"}
-    return date["date"]
-
-
-def set_message_id(user_id, message_id):
-    collection = db["users"]
-    collection.update_one({"_id":user_id}, {"$set":{"message_id":message_id}})
-
-
-def get_message_id(user_id):
-    collection = db["users"]
-    message_id = collection.find_one({"_id":user_id}, {"_id":False})
-    #message_id is dict like {"message_id":"324325325"}
-    return message_id["message_id"]
+def get_last_date(chat_id):
+    date = session.query(Task).filter(Task.chat_id==chat_id).order_by(Task.date.desc()).first().date
+    return date
